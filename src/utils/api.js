@@ -1,5 +1,9 @@
 /* Api methods to call /functions */
-
+const readAllQuestions = () => {
+  return fetch('/.netlify/functions/questions-all').then((response) => {
+    return response.json()
+  })
+}
 const create = (data) => {
   return fetch('/.netlify/functions/todos-create', {
     body: JSON.stringify(data),
@@ -44,6 +48,7 @@ const batchDeleteTodo = (todoIds) => {
 }
 
 export default {
+  readAllQuestions:readAllQuestions,
   create: create,
   readAll: readAll,
   update: update,

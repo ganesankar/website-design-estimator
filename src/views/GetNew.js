@@ -1,33 +1,23 @@
 import React, { Component } from "react";
-import { Link } from "react-router-dom";
 import classnames from "classnames";
-
+import _ from 'lodash';
 import {
-  UncontrolledCollapse,
-  DropdownMenu,
-  DropdownItem,
+  FormGroup,
+  Input,
   Card,
-  DropdownToggle,
-  UncontrolledDropdown,
   ListGroup,
   ListGroupItem,
   Button,
   TabContent,
   TabPane,
-  NavbarBrand,
-  Navbar,
-  NavItem,
-  NavLink,
-  Nav,
   Container,
   Row,
   Col,
 } from "reactstrap";
+import ReactDatetime from "react-datetime";
 
 import ContentEditable from "../components/ContentEditable";
 
-import SettingsMenu from "../components/SettingsMenu";
-import SettingsIcon from "../components/SettingsIcon";
 import analytics from "../utils/analytics";
 import api from "../utils/api";
 import sortByDate from "../utils/sortByDate";
@@ -66,8 +56,13 @@ export default class GetNew extends Component {
       }
 
       console.log("all todos", todos);
+      var newArr = [];
+      todos.forEach(function (e) {
+        newArr.push(e.data);
+      });
+      const newtodo = _.orderBy(newArr, "order", "asc");
       this.setState({
-        todos: todos,
+        todos: newtodo,
       });
     });
   }
@@ -128,182 +123,8 @@ export default class GetNew extends Component {
         });
       });
   };
-  deleteTodo = (e) => {
-    const { todos } = this.state;
-    const todoId = e.target.dataset.id;
-
-    // Optimistically remove todo from UI
-    const filteredTodos = todos.reduce(
-      (acc, current) => {
-        const currentId = getTodoId(current);
-        if (currentId === todoId) {
-          // save item being removed for rollback
-          acc.rollbackTodo = current;
-          return acc;
-        }
-        // filter deleted todo out of the todos list
-        acc.optimisticState = acc.optimisticState.concat(current);
-        return acc;
-      },
-      {
-        rollbackTodo: {},
-        optimisticState: [],
-      }
-    );
-
-    this.setState({
-      todos: filteredTodos.optimisticState,
-    });
-
-    // Make API request to delete todo
-    api
-      .delete(todoId)
-      .then(() => {
-        console.log(`deleted todo id ${todoId}`);
-        analytics.track("todoDeleted", {
-          category: "todos",
-        });
-      })
-      .catch((e) => {
-        console.log(`There was an error removing ${todoId}`, e);
-        // Add item removed back to list
-        this.setState({
-          todos: filteredTodos.optimisticState.concat(
-            filteredTodos.rollbackTodo
-          ),
-        });
-      });
-  };
-  handleTodoCheckbox = (event) => {
-    const { todos } = this.state;
-    const { target } = event;
-    const todoCompleted = target.checked;
-    const todoId = target.dataset.id;
-
-    const updatedTodos = todos.map((todo, i) => {
-      const { data } = todo;
-      const id = getTodoId(todo);
-      if (id === todoId && data.completed !== todoCompleted) {
-        data.completed = todoCompleted;
-      }
-      return todo;
-    });
-
-    this.setState(
-      {
-        todos: updatedTodos,
-      },
-      () => {
-        api
-          .update(todoId, {
-            completed: todoCompleted,
-          })
-          .then(() => {
-            console.log(`update todo ${todoId}`, todoCompleted);
-            const eventName = todoCompleted
-              ? "todoCompleted"
-              : "todoUnfinished";
-            analytics.track(eventName, {
-              category: "todos",
-            });
-          })
-          .catch((e) => {
-            console.log("An API error occurred", e);
-          });
-      }
-    );
-  };
-  updateTodoTitle = (event, currentValue) => {
-    let isDifferent = false;
-    const todoId = event.target.dataset.key;
-
-    const updatedTodos = this.state.todos.map((todo, i) => {
-      const id = getTodoId(todo);
-      if (id === todoId && todo.data.title !== currentValue) {
-        todo.data.title = currentValue;
-        isDifferent = true;
-      }
-      return todo;
-    });
-
-    // only set state if input different
-    if (isDifferent) {
-      this.setState(
-        {
-          todos: updatedTodos,
-        },
-        () => {
-          api
-            .update(todoId, {
-              title: currentValue,
-            })
-            .then(() => {
-              console.log(`update todo ${todoId}`, currentValue);
-              analytics.track("todoUpdated", {
-                category: "todos",
-                label: currentValue,
-              });
-            })
-            .catch((e) => {
-              console.log("An API error occurred", e);
-            });
-        }
-      );
-    }
-  };
-  clearCompleted = () => {
-    const { todos } = this.state;
-
-    // Optimistically remove todos from UI
-    const data = todos.reduce(
-      (acc, current) => {
-        if (current.data.completed) {
-          // save item being removed for rollback
-          acc.completedTodoIds = acc.completedTodoIds.concat(
-            getTodoId(current)
-          );
-          return acc;
-        }
-        // filter deleted todo out of the todos list
-        acc.optimisticState = acc.optimisticState.concat(current);
-        return acc;
-      },
-      {
-        completedTodoIds: [],
-        optimisticState: [],
-      }
-    );
-
-    // only set state if completed todos exist
-    if (!data.completedTodoIds.length) {
-      alert("Please check off some todos to batch remove them");
-      this.closeModal();
-      return false;
-    }
-
-    this.setState(
-      {
-        todos: data.optimisticState,
-      },
-      () => {
-        setTimeout(() => {
-          this.closeModal();
-        }, 600);
-
-        api
-          .batchDelete(data.completedTodoIds)
-          .then(() => {
-            console.log(`Batch removal complete`, data.completedTodoIds);
-            analytics.track("todosBatchDeleted", {
-              category: "todos",
-            });
-          })
-          .catch((e) => {
-            console.log("An API error occurred", e);
-          });
-      }
-    );
-  };
+  
+ 
   closeModal = (e) => {
     this.setState({
       showMenu: false,
@@ -320,65 +141,204 @@ export default class GetNew extends Component {
       category: "modal",
     });
   };
-  renderTodos() {
-    const { todos } = this.state;
+  
 
-    if (!todos || !todos.length) {
-      // Loading State here
-      return null;
+  getSection = (item) => {
+    if (
+      item.type === "input" ||
+      item.disabled ||
+      (item.options && item.options.length === 0)
+    ) {
+      return <Input disabled placeholder="Regular" type="text" />;
     }
-
-    const timeStampKey = "ts";
-    const orderBy = "desc"; // or `asc`
-    const sortOrder = sortByDate(timeStampKey, orderBy);
-    const todosByDate = todos.sort(sortOrder);
-
-    return todosByDate.map((todo, i) => {
-      const { data, ref } = todo;
-      const id = getTodoId(todo);
-      // only show delete button after create API response returns
-      let deleteButton;
-      if (ref) {
-        deleteButton = (
-          <button data-id={id} onClick={this.deleteTodo}>
-            delete
-          </button>
+    switch (item.type) {
+      case "text":
+        return (
+          <Input
+            placeholder={item.placeholder}
+            type="text"
+            value={item.value}
+          />
         );
-      }
-      const boxIcon = data.completed ? "#todo__box__done" : "#todo__box";
-      return (
-        <div key={i} className="todo-item">
-          <label className="todo">
-            <input
-              data-id={id}
-              className="todo__state"
-              type="checkbox"
-              onChange={this.handleTodoCheckbox}
-              checked={data.completed}
-            />
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 200 25"
-              className="todo__icon"
-            >
-              <use xlinkHref={`${boxIcon}`} className="todo__box"></use>
-              <use xlinkHref="#todo__check" className="todo__check"></use>
-            </svg>
-            <div className="todo-list-title">
-              <ContentEditable
-                tagName="span"
-                editKey={id}
-                onBlur={this.updateTodoTitle} // save on enter/blur
-                html={data.title}
-                // onChange={this.handleDataChange} // save on change
+      case "number":
+        return (
+          <Input
+            placeholder={item.placeholder}
+            type="number"
+            value={item.value}
+          />
+        );
+      case "textarea":
+        return (
+          <Input
+            placeholder={item.placeholder}
+            rows="3"
+            type="textarea"
+            value={item.value}
+          />
+        );
+      case "toggle":
+        return (
+          <>
+            <label className="custom-toggle">
+              <input type="checkbox" />
+              <span className="custom-toggle-slider rounded-circle" />
+            </label>
+            <span className="clearfix" />
+          </>
+        );
+      case "checkbox":
+        return (
+          <>
+            <div className="custom-control custom-checkbox mb-3">
+              <input
+                className="custom-control-input"
+                id="customCheck1"
+                type="checkbox"
               />
+              <label className="custom-control-label" htmlFor="customCheck1">
+                Unchecked
+              </label>
             </div>
-          </label>
-          {deleteButton}
-        </div>
-      );
-    });
-  }
+            <div className="custom-control custom-checkbox mb-3">
+              <input
+                className="custom-control-input"
+                defaultChecked
+                id="customCheck2"
+                type="checkbox"
+              />
+              <label className="custom-control-label" htmlFor="customCheck2">
+                Checked
+              </label>
+            </div>
+            <div className="custom-control custom-checkbox mb-3">
+              <input
+                className="custom-control-input"
+                disabled
+                id="customCheck3"
+                type="checkbox"
+              />
+              <label className="custom-control-label" htmlFor="customCheck3">
+                Disabled Unchecked
+              </label>
+            </div>
+            <div className="custom-control custom-checkbox mb-3">
+              <input
+                className="custom-control-input"
+                defaultChecked
+                disabled
+                id="customCheck4"
+                type="checkbox"
+              />
+              <label className="custom-control-label" htmlFor="customCheck4">
+                Disabled Checked
+              </label>
+            </div>
+          </>
+        );
+      case "radio":
+        return (
+          <>
+            <div className="custom-control custom-radio mb-3">
+              <input
+                className="custom-control-input"
+                id="customRadio5"
+                name="custom-radio-2"
+                type="radio"
+              />
+              <label className="custom-control-label" htmlFor="customRadio5">
+                Unchecked
+              </label>
+            </div>
+            <div className="custom-control custom-radio mb-3">
+              <input
+                className="custom-control-input"
+                defaultChecked
+                id="customRadio6"
+                name="custom-radio-2"
+                type="radio"
+              />
+              <label className="custom-control-label" htmlFor="customRadio6">
+                Checked
+              </label>
+            </div>
+            <div className="custom-control custom-radio mb-3">
+              <input
+                className="custom-control-input"
+                disabled
+                id="customRadio7"
+                name="custom-radio-2"
+                type="radio"
+              />
+              <label className="custom-control-label" htmlFor="customRadio7">
+                Disabled unchecked
+              </label>
+            </div>
+            <div className="custom-control custom-radio mb-3">
+              <input
+                className="custom-control-input"
+                defaultChecked
+                disabled
+                id="customRadio8"
+                name="custom-radio-2"
+                type="radio"
+              />
+              <label className="custom-control-label" htmlFor="customRadio8">
+                Disabled checkbox
+              </label>
+            </div>
+          </>
+        );
+      case "slider":
+        return <div></div>;
+      case "options":
+        return <div></div>;
+      case "scale":
+        return <div></div>;
+
+      case "date":
+        return (
+          <ReactDatetime
+            inputProps={{
+              placeholder: "Date Picker Here",
+            }}
+            timeFormat={false}
+            renderDay={(props, currentDate, selectedDate) => {
+              let classes = props.className;
+              if (
+                this.state.startDate &&
+                this.state.endDate &&
+                this.state.startDate._d + "" === currentDate._d + ""
+              ) {
+                classes += " start-date";
+              } else if (
+                this.state.startDate &&
+                this.state.endDate &&
+                new Date(this.state.startDate._d + "") <
+                  new Date(currentDate._d + "") &&
+                new Date(this.state.endDate._d + "") >
+                  new Date(currentDate._d + "")
+              ) {
+                classes += " middle-date";
+              } else if (
+                this.state.endDate &&
+                this.state.endDate._d + "" === currentDate._d + ""
+              ) {
+                classes += " end-date";
+              }
+              return (
+                <td {...props} className={classes}>
+                  {currentDate.date()}
+                </td>
+              );
+            }}
+            onChange={(e) => this.setState({ startDate: e })}
+          />
+        );
+
+      default:
+    }
+  };
   render() {
     const { todos } = this.state;
     return (
@@ -461,11 +421,10 @@ export default class GetNew extends Component {
                                   this.toggleNavs(e, "iconTabs", i + 1)
                                 }
                               >
-                                {item.data.title}
+                                {item.title}
                               </ListGroupItem>
                             ))}{" "}
                         </ListGroup>
-                        
                       </div>
                     </Col>
                     <Col sm="9">
@@ -473,20 +432,28 @@ export default class GetNew extends Component {
                         {todos &&
                           todos.length > 0 &&
                           todos.map((item, i) => (
-                            <TabPane tabId={`iconTabs${i+1}`} key={item.id}>
-                              <p className="description">
-                                {i} Raw denim you probably haven't heard of them
-                                jean shorts Austin. Nesciunt tofu stumptown
-                                aliqua, retro synth master cleanse. Mustache
-                                cliche tempor, williamsburg carles vegan
-                                helvetica. Reprehenderit butcher retro keffiyeh
-                                dreamcatcher synth.
-                              </p>
-                              <p className="description">
-                                eee Raw denim you probably haven't heard of them
-                                jean shorts Austin. Nesciunt tofu stumptown
-                                aliqua, retro synth master cleanse.
-                              </p>
+                            <TabPane tabId={`iconTabs${i + 1}`} key={item.id}>
+                              <h4 class="mb-1">
+                                {i + 1} {item.title}
+                              </h4>
+                              <p class="mt-0">{item.desc}</p>
+                              {item.questions &&
+                                item.questions.length > 0 &&
+                                item.questions.map((q, j) => (
+                                  <div
+                                    tabId={`tabquest${j + 1}`}
+                                    key={`tabquest${j + 1}`}
+                                  >
+                                    <small class="text-uppercase font-weight-bold">
+                                      {i + 1} {q.title}
+                                    </small>
+
+                                    <p class="text-muted mb-0">{q.desc}</p>
+                                    <FormGroup>{this.getSection(q)}</FormGroup>
+
+                                    <hr />
+                                  </div>
+                                ))}{" "}
                             </TabPane>
                           ))}{" "}
                       </TabContent>
@@ -503,36 +470,6 @@ export default class GetNew extends Component {
             </Container>
           </section>
         </main>
-        <div className="todo-list">
-          <h2>
-            Create todo
-            <SettingsIcon onClick={this.openModal} className="mobile-toggle" />
-          </h2>
-          <form className="todo-create-wrapper" onSubmit={this.saveTodo}>
-            <input
-              className="todo-create-input"
-              placeholder="Add a todo item"
-              name="name"
-              ref={(el) => (this.inputElement = el)}
-              autoComplete="off"
-              style={{ marginRight: 20 }}
-            />
-            <div className="todo-actions">
-              <button className="todo-create-button">Create todo</button>
-              <SettingsIcon
-                onClick={this.openModal}
-                className="desktop-toggle"
-              />
-            </div>
-          </form>
-
-          {this.renderTodos()}
-        </div>
-        <SettingsMenu
-          showMenu={this.state.showMenu}
-          handleModalClose={this.closeModal}
-          handleClearCompleted={this.clearCompleted}
-        />
       </div>
     );
   }

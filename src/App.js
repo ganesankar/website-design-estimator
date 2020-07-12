@@ -1,22 +1,7 @@
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
 
-import {
-  UncontrolledCollapse,
-  DropdownMenu,
-  DropdownItem,
-  DropdownToggle,
-  UncontrolledDropdown,
-  NavbarBrand,
-  Navbar,
-  NavItem,
-  NavLink,
-  Nav,
-  Container,
-  Row,
-  Col,
-} from "reactstrap";
+
 
 import Landing from "./views/Landing.js";
 import Getall from "./views/Getall.js";
@@ -46,16 +31,3 @@ export default class App extends Component {
   }
 }
 
-function removeOptimisticTodo(todos) {
-  // return all 'real' todos
-  return todos.filter((todo) => {
-    return todo.ref;
-  });
-}
-
-function getTodoId(todo) {
-  if (!todo.ref) {
-    return null;
-  }
-  return todo.ref["@ref"].id;
-}

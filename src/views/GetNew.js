@@ -16,11 +16,8 @@ import {
 } from "reactstrap";
 import ReactDatetime from "react-datetime";
 
-import ContentEditable from "../components/ContentEditable";
-
 import analytics from "../utils/analytics";
 import api from "../utils/api";
-import sortByDate from "../utils/sortByDate";
 import isLocalHost from "../utils/isLocalHost";
 
 export default class GetNew extends Component {
@@ -480,11 +477,4 @@ function removeOptimisticTodo(todos) {
   return todos.filter((todo) => {
     return todo.ref;
   });
-}
-
-function getTodoId(todo) {
-  if (!todo.ref) {
-    return null;
-  }
-  return todo.ref["@ref"].id;
 }

@@ -13,6 +13,7 @@
     "react": "^16.13.1",
     "react-datetime": "^2.16.3",
     "react-dom": "^16.13.1",
+    "react-netlify-identity": "^0.2.5",
     "react-router": "^5.2.0",
     "react-router-dom": "^5.2.0",
     "react-scripts": "3.4.1",
@@ -20,6 +21,7 @@
   },
   "scripts": {
     "bootstrap": "netlify dev:exec node ./scripts/bootstrap-fauna-database.js",
+    "lint":"eslint",
     "docs": "md-magic --path '**/*.md' --ignore 'node_modules'",
     "start": "netlify dev",
     "prebuild": "echo 'setup faunaDB' && npm run bootstrap",

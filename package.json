@@ -23,7 +23,7 @@
     "docs": "md-magic --path '**/*.md' --ignore 'node_modules'",
     "start": "netlify dev",
     "prebuild": "echo 'setup faunaDB' && npm run bootstrap",
-    "build": "CI= react-scripts build"
+    "build": "react-scripts build"
   },
   "devDependencies": {
     "netlify-cli": "^2.19.0"
